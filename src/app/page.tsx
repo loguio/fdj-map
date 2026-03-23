@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { FDJStore } from '@/types/store';
-import { supabase } from '@/lib/supabaseClient';
 import { MapIcon, List, AlertCircle, Loader2 } from 'lucide-react';
 import StoreList from '@/components/StoreList';
 
@@ -27,27 +26,20 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
 
-  // Load visited stores from Supabase
+  // Load visited stores from API
   const loadVisitedStores = async () => {
     try {
-      const { data, error } = await supabase
-        .from('visited_stores')
-        .select('store_id');
+      const response = await fetch('/api/visits');
+      if (!response.ok) throw new Error('Failed to fetch visits');
       
-      if (error) {
-        console.error('Error fetching visited stores:', error);
-        return;
-      }
-      
-      if (data) {
-        setVisitedStores(new Set(data.map(row => row.store_id)));
-      }
+      const data = await response.json();
+      setVisitedStores(new Set(data.map((row: any) => row.store_id)));
     } catch (err) {
       console.error('Failed to load visited stores', err);
     }
   };
 
-  // Toggle visited status for a store
+  // Toggle visited status for a store via API
   const toggleVisitedStore = async (storeId: number) => {
     const isCurrentlyVisited = visitedStores.has(storeId);
     
@@ -61,11 +53,15 @@ export default function Home() {
     setVisitedStores(newVisited);
 
     try {
-      if (isCurrentlyVisited) {
-        await supabase.from('visited_stores').delete().eq('store_id', storeId);
-      } else {
-        await supabase.from('visited_stores').insert([{ store_id: storeId }]);
-      }
+      const response = await fetch('/api/visits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storeId,
+          action: isCurrentlyVisited ? 'remove' : 'add'
+        })
+      });
+      if (!response.ok) throw new Error('API Error');
     } catch (err) {
       console.error('Failed to toggle store status', err);
       // Revert on failure

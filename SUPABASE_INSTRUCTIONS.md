@@ -35,8 +35,8 @@ CREATE POLICY "Allow public delete" ON visited_stores FOR DELETE USING (true);
 3. À la racine du projet `fdj-map` (dans le dossier `/home/marius/projets/fdj-map`), créez un fichier `.env.local` et ajoutez ces valeurs :
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=votre_url_supabase
-NEXT_PUBLIC_SUPABASE_ANON_KEY=votre_cle_anon_supabase
+SUPABASE_URL=votre_url_supabase
+SUPABASE_ANON_KEY=votre_cle_anon_supabase
 ```
 
 ## 3. Lancer l'application
