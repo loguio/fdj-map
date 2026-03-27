@@ -28,6 +28,7 @@ interface MapComponentProps {
   visitedStores: Set<number>;
   onToggleVisited: (storeId: number) => void;
   selectedStore: FDJStore | null;
+  onFetchRequest?: (lat: number, lng: number) => void;
 }
 
 // Sub-component to handle automatic recentering (for selected stores)
@@ -50,7 +51,43 @@ const UserLocationTracker = ({ location, hasSelectedStore }: { location: [number
   return null;
 };
 
-export default function MapComponent({ userLocation, stores, visitedStores, onToggleVisited, selectedStore }: MapComponentProps) {
+const MapEvents = ({ stores, onFetchRequest }: { stores: FDJStore[], onFetchRequest?: (lat: number, lng: number) => void }) => {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (!onFetchRequest) return;
+    
+    // We use a small timeout to avoid triggering multiple fetches while dragging
+    let timeoutId: NodeJS.Timeout;
+    
+    const handleMoveEnd = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        const bounds = map.getBounds();
+        const visibleStoresCount = stores.filter(store => {
+          const latLng = L.latLng(store.latitude, store.longitude);
+          return bounds.contains(latLng);
+        }).length;
+        
+        // Refetch if there are fewer than 30 points of sale visible on the screen
+        if (visibleStoresCount < 30) {
+          const center = map.getCenter();
+          onFetchRequest(center.lat, center.lng);
+        }
+      }, 300);
+    };
+
+    map.on('moveend', handleMoveEnd);
+    return () => {
+      map.off('moveend', handleMoveEnd);
+      clearTimeout(timeoutId);
+    };
+  }, [map, stores, onFetchRequest]);
+
+  return null;
+};
+
+export default function MapComponent({ userLocation, stores, visitedStores, onToggleVisited, selectedStore, onFetchRequest }: MapComponentProps) {
   // Leaflet is client side only, so we wait for hydration
   const [isMounted, setIsMounted] = useState(false);
 
@@ -75,10 +112,11 @@ export default function MapComponent({ userLocation, stores, visitedStores, onTo
         zoomControl={false}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.google.com/intl/fr_fr/help/terms_maps/">Google</a>'
+          url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
         />
         
+        <MapEvents stores={stores} onFetchRequest={onFetchRequest} />
         {selectedStore && <MapRecenter center={[selectedStore.latitude, selectedStore.longitude]} />}
         <UserLocationTracker location={userLocation} hasSelectedStore={!!selectedStore} />
         <ZoomControl position="bottomright" />

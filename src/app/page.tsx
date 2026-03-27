@@ -70,7 +70,7 @@ export default function Home() {
   };
 
   // Fetch FDJ stores based on location
-  const fetchStores = async (lat: number, lon: number) => {
+  const fetchStores = useCallback(async (lat: number, lon: number) => {
     try {
       const response = await fetch(`/api/fdj?latitude=${lat}&longitude=${lon}`);
       if (!response.ok) throw new Error('Erreur lors de la récupération des données FDJ');
@@ -83,7 +83,7 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // Handle Geolocation
   useEffect(() => {
@@ -111,7 +111,7 @@ export default function Home() {
       setError("La géolocalisation n'est pas supportée par votre navigateur.");
       setIsLoading(false);
     }
-  }, []);
+  }, [fetchStores]);
 
   const handleStoreSelect = useCallback((store: FDJStore) => {
     setSelectedStore(store);
@@ -198,6 +198,7 @@ export default function Home() {
             visitedStores={visitedStores}
             onToggleVisited={toggleVisitedStore}
             selectedStore={selectedStore}
+            onFetchRequest={fetchStores}
           />
         </div>
 
